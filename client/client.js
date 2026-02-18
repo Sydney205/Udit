@@ -4,6 +4,9 @@
   let currentEl = null;
 
   const overlays = {};
+  let tooltip;
+
+  /* ---------- Overlay Layers ---------- */
 
   function createLayer(name, color) {
     const el = document.createElement("div");
@@ -27,97 +30,144 @@
     createLayer("content", "rgba(59, 130, 246, 1)");
   }
 
+  /* ---------- Tooltip ---------- */
+
+  function createTooltip() {
+    tooltip = document.createElement("div");
+    Object.assign(tooltip.style, {
+      position: "fixed",
+      pointerEvents: "none",
+      background: "#111827",
+      color: "#e5e7eb",
+      fontFamily: "monospace",
+      fontSize: "12px",
+      padding: "6px 8px",
+      borderRadius: "6px",
+      zIndex: "1000000",
+      display: "none",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.35)",
+      whiteSpace: "nowrap"
+    });
+    document.body.appendChild(tooltip);
+  }
+
+  /* ---------- Helpers ---------- */
+
+  function px(v) {
+    return parseFloat(v) || 0;
+  }
+
   function clear() {
     currentEl = null;
     Object.values(overlays).forEach(o => (o.style.display = "none"));
+    tooltip.style.display = "none";
   }
 
-  function px(n) {
-    return parseFloat(n) || 0;
+  function updateTooltip(el) {
+    const rect = el.getBoundingClientRect();
+    const styles = getComputedStyle(el);
+
+    const tag = el.tagName.toLowerCase();
+    const cls = el.className
+      ? "." + el.className.trim().split(/\s+/).join(".")
+      : "";
+
+    tooltip.innerHTML = `
+      <strong>${tag}${cls}</strong><br>
+      ${Math.round(rect.width)} × ${Math.round(rect.height)}<br>
+      margin: ${styles.margin}<br>
+      padding: ${styles.padding}
+    `;
+
+    let top = rect.top - tooltip.offsetHeight - 8;
+    if (top < 0) top = rect.bottom + 8;
+
+    tooltip.style.top = top + "px";
+    tooltip.style.left = rect.left + "px";
+    tooltip.style.display = "block";
   }
+
+  /* ---------- Highlight Logic ---------- */
 
   function highlight(el) {
     const rect = el.getBoundingClientRect();
     const styles = getComputedStyle(el);
 
-    const scrollX = window.scrollX;
-    const scrollY = window.scrollY;
+    const sx = window.scrollX;
+    const sy = window.scrollY;
 
     const margin = {
-      top: px(styles.marginTop),
-      right: px(styles.marginRight),
-      bottom: px(styles.marginBottom),
-      left: px(styles.marginLeft)
+      t: px(styles.marginTop),
+      r: px(styles.marginRight),
+      b: px(styles.marginBottom),
+      l: px(styles.marginLeft)
     };
 
     const border = {
-      top: px(styles.borderTopWidth),
-      right: px(styles.borderRightWidth),
-      bottom: px(styles.borderBottomWidth),
-      left: px(styles.borderLeftWidth)
+      t: px(styles.borderTopWidth),
+      r: px(styles.borderRightWidth),
+      b: px(styles.borderBottomWidth),
+      l: px(styles.borderLeftWidth)
     };
 
     const padding = {
-      top: px(styles.paddingTop),
-      right: px(styles.paddingRight),
-      bottom: px(styles.paddingBottom),
-      left: px(styles.paddingLeft)
+      t: px(styles.paddingTop),
+      r: px(styles.paddingRight),
+      b: px(styles.paddingBottom),
+      l: px(styles.paddingLeft)
     };
 
-    // Margin box
     Object.assign(overlays.margin.style, {
       display: "block",
-      top: rect.top + scrollY - margin.top + "px",
-      left: rect.left + scrollX - margin.left + "px",
-      width: rect.width + margin.left + margin.right + "px",
-      height: rect.height + margin.top + margin.bottom + "px"
+      top: rect.top + sy - margin.t + "px",
+      left: rect.left + sx - margin.l + "px",
+      width: rect.width + margin.l + margin.r + "px",
+      height: rect.height + margin.t + margin.b + "px"
     });
 
-    // Border box
     Object.assign(overlays.border.style, {
       display: "block",
-      top: rect.top + scrollY + "px",
-      left: rect.left + scrollX + "px",
+      top: rect.top + sy + "px",
+      left: rect.left + sx + "px",
       width: rect.width + "px",
       height: rect.height + "px"
     });
 
-    // Padding box
     Object.assign(overlays.padding.style, {
       display: "block",
-      top: rect.top + scrollY + border.top + "px",
-      left: rect.left + scrollX + border.left + "px",
-      width: rect.width - border.left - border.right + "px",
-      height: rect.height - border.top - border.bottom + "px"
+      top: rect.top + sy + border.t + "px",
+      left: rect.left + sx + border.l + "px",
+      width: rect.width - border.l - border.r + "px",
+      height: rect.height - border.t - border.b + "px"
     });
 
-    // Content box
     Object.assign(overlays.content.style, {
       display: "block",
-      top: rect.top + scrollY + border.top + padding.top + "px",
-      left: rect.left + scrollX + border.left + padding.left + "px",
+      top: rect.top + sy + border.t + padding.t + "px",
+      left: rect.left + sx + border.l + padding.l + "px",
       width:
         rect.width -
-        border.left -
-        border.right -
-        padding.left -
-        padding.right +
+        border.l -
+        border.r -
+        padding.l -
+        padding.r +
         "px",
       height:
         rect.height -
-        border.top -
-        border.bottom -
-        padding.top -
-        padding.bottom +
+        border.t -
+        border.b -
+        padding.t -
+        padding.b +
         "px"
     });
+
+    updateTooltip(el);
   }
 
   function update() {
     if (lastX == null || lastY == null) return;
 
     const el = document.elementFromPoint(lastX, lastY);
-
     if (!el || el === document.body || el === document.documentElement) {
       clear();
       return;
@@ -129,19 +179,19 @@
     }
   }
 
+  /* ---------- Events ---------- */
+
   document.addEventListener("mousemove", e => {
     lastX = e.clientX;
     lastY = e.clientY;
     update();
   });
 
-  document.addEventListener(
-    "scroll",
-    () => {
-      update();
-    },
-    true
-  );
+  document.addEventListener("scroll", update, true);
+
+  /* ---------- Init ---------- */
 
   initOverlays();
+  createTooltip();
 })();
+
