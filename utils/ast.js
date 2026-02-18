@@ -1,10 +1,16 @@
 import { parse } from "@babel/parser";
 
 import { traverse } from "@babel/types";
-
-// import traverse from "@babel/traverse";
 import { generate } from "@babel/generator";
+
 import * as t from "@babel/types";
+
+// import { traverse } from "@babel/types";
+// import traverse from "@babel/traverse";
+
+
+// const traverse = traverseModule.default;
+// const generate = generateModule.default;
 
 export function injectMetadata(code, filePath) {
   const ast = parse(code, {

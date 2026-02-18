@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { createFilter } from "vite";
-import { injectMetadata } from "./metadata/inject";
+import { injectMetadata } from "./utils/ast";
 import { handleUpdate } from "./server/updateHandler";
 
 export default function udit() {
@@ -10,11 +10,32 @@ export default function udit() {
   return {
     name: "Udit",
     enforce: "pre",
+
+    resolveId(id) {
+      if (id === "virtual:udit") {
+        return id
+      }
+    },
+
+    load(id) {
+      if (id === "virtual:udit") {
+        return `
+          import "../udit/client/client.js";
+        `
+      }
+    },
+    
     transform(code, id) {
       if (!filter(id)) return null;
       if (process.env.NODE_ENV !== "development") return null;
 
-      return injectMetadata(code, id);
+      const withMetadata = injectMetadata(code, id)
+
+      return `
+        ${withMetadata}
+
+        import "virtual:udit";
+      `;
     },
     configureServer(server) {
       server.middlewares.use("/udit", async (req, res) => {

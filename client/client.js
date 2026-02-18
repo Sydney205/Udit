@@ -1,5 +1,5 @@
 const overlay = document.createElement("div");
-overlay.style.position = "absolute";
+overlay.style.position = "fixed";
 overlay.style.pointerEvents = "none";
 overlay.style.border = "2px solid red";
 overlay.style.zIndex = "9999";
